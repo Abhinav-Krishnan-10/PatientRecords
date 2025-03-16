@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Health Records</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f0f8ff;
+            display: flex;
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            width: 250px;
+            background: #004080;
+            color: white;
+            padding-top: 20px;
+            height: 100vh;
+            position: fixed;
+            left: -250px;
+            transition: 0.3s;
+            z-index: 1000;
+        }
+
+        #sidebar.open {
+            left: 0;
+        }
+
+        #sidebar a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 15px 20px;
+            margin: 5px 10px;
+            background: #0059b3;
+            border-radius: 5px;
+        }
+
+        #sidebar a:hover {
+            background: #0073e6;
+        }
+
+        /* Content Area */
+        #content {
+            flex: 1;
+            margin-left: 20px;
+            padding: 20px;
+            transition: margin-left 0.3s;
+        }
+
+        #content.sidebar-open {
+
+            margin-left: 270px;
+            transition: margin-left 0.3s;
+
+            margin-left: 290px;
+        }
+
+        /* Forms and Input Styles */
+        .form-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            background: #004080;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #0059b3;
+        }
+
+        /* Menu Button */
+        #menu-btn {
+            position: fixed;            
+            top: 40px;
+            left: 20px;
+            z-index: 1100;
+            background: #004080;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        /* Search Results */
+        .patient-card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .patient-card h3 {
+            color: #004080;
+            margin-bottom: 10px;
+        }
+
+        /* User Info */
+        #user-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #004080;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logout-btn {
+            background: #ff4444;
+            margin: 0;
+            padding: 5px 10px;
+        }
+
+        .logout-btn:hover {
+            background: #cc0000;
+        }
+
+        /* Page Visibility */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Search Container */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-container input {
+            flex: 1;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .form-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .form-link a {
+            color: #004080;
+            text-decoration: none;
+        }
+
+        .form-link a:hover {
+            text-decoration: underline;
+        }
+
+        #patient-search h2 {
+            margin-left: 40px;
+        }
+
+        h2 {
+            margin-left: 80px;
+        }
+
+
+
+        
+
+
+    </style>
+</head>
+<body>
+    <button id="menu-btn" onclick="toggleSidebar()">☰ Menu </button>
+    
+    <div id="user-info" style="display: none;">
+        <span id="username-display"></span>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
+
+    <div id="sidebar">
+        <a href="#" onclick="showPage('patient-search')">🔍 Search Patient</a>
+        <a href="#" onclick="showPage('add-patient')">➕ Add Patient</a>
+        <a href="#" onclick="showPage('view-records')">📋 View Records</a>
+        <a href="#" onclick="showPage('user-profile')">👤 My Profile</a>
+    </div>
+
+    <div id="content">
+        <!-- Login Page -->
+        <div id="login" class="page active">
+            <div class="form-container">
+                <h2> Login</h2>
+                <form id="login-form">
+                    <input type="text" id="login-username" placeholder="Username" required>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                    <p class="form-link">Don't have an account? <a href="#" onclick="showPage('signup')">Sign Up</a></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sign Up Page -->
+        <div id="signup" class="page">
+            <div class="form-container">
+                <h2> Sign Up</h2>
+                <form id="signup-form">
+                    <input type="text" id="signup-fullname" placeholder="Full Name" required>
+                    <input type="text" id="signup-username" placeholder="Username" required>
+                    <input type="email" id="signup-email" placeholder="Email" required>
+                    <input type="password" id="signup-password" placeholder="Password" required>
+                    <button type="submit">Sign Up</button>
+                    <p class="form-link">Already have an account? <a href="#" onclick="showPage('login')">Login</a></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Patient Search Page -->
+        <div id="patient-search" class="page">
+            <h2>Search Patient</h2>
+            <div class="form-container">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Enter Patient ID or Name">
+                    <button onclick="searchPatients()">Search</button>
+                </div>
+                <div id="search-results"></div>
+            </div>
+        </div>
+
+        <!-- Add Patient Page -->
+        <div id="add-patient" class="page">
+            <h2>Add New Patient</h2>
+            <div class="form-container">
+                <form id="patient-form">
+                    <input type="text" id="patient-id" placeholder="Patient ID" required>
+                    <input type="text" id="patient-name" placeholder="Full Name" required>
+                    <input type="number" id="patient-age" placeholder="Age" required>
+                    <input type="tel" id="patient-phone" placeholder="Phone Number" required>
+                    <select id="patient-gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <textarea id="patient-address" placeholder="Address" required></textarea>
+                    <textarea id="medical-history" placeholder="Medical History"></textarea>
+                    <textarea id="current-medications" placeholder="Current Medications"></textarea>
+                    <textarea id="allergies" placeholder="Allergies"></textarea>
+                    <button type="submit">Save Patient Record</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- View Records Page -->
+        <div id="view-records" class="page">
+            <h2>Patient Records</h2>
+            <div id="records-container"></div>
+        </div>
+
+        <!-- User Profile Page -->
+        <div id="user-profile" class="page">
+            <h2>My Profile</h2>
+            <div class="form-container">
+                <div id="profile-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menu-btn');
+        let currentPageId;
+        showPage('login')
+            
+            
+        let currentUser = null;
+        let patients = {};
+        const users = {
+            'admin': {
+                password: 'admin123',
+                name: 'Administrator',
+                email: 'admin@hospital.com'
+            }
+        };
+
+        // Utility Functions
+        function toggleSidebar() {
+            
+            sidebar.classList.toggle('open');
+            if (sidebar.classList.contains('open')) {
+                menuBtn.style.display = 'none';
+            } else {
+                menuBtn.style.display = 'block';
+            }
+        }
+
+        // Hide sidebar when clicking outside
+        window.addEventListener('click', function(event) {
+
+            if (!sidebar.contains(event.target) && !menuBtn.contains(event.target)) {
+               
+
+              if (currentPageId !== 'login' && currentPageId !== 'signup') {
+                 sidebar.classList.remove('open');
+                	menuBtn.style.display = 'block';
+              }
+            
+            
+            }
+        });
+
+        function showPage(pageId) {
+        		currentPageId = pageId;
+
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            if (pageId !== 'login' && pageId !== 'signup') {
+								menuBtn.style.display = 'none';
+								toggleSidebar();
+            }else{
+                menuBtn.style.display = 'none';
+            }
+            if (pageId === 'user-profile') {
+                updateProfileInfo();
+            } else if (pageId === 'view-records') {
+                updateRecordsDisplay(); // Load records when viewing the records page
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('user-info').style.display = 'none';
+            showPage('login');
+        }
+
+        // Sign Up Handler
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('signup-username').value;
+            const password = document.getElementById('signup-password').value;
+            const fullname = document.getElementById('signup-fullname').value;
+            const email = document.getElementById('signup-email').value;
+
+            if (users[username]) {
+                alert('Username already exists!');
+                return;
+            }
+
+            users[username] = {
+                password: password,
+                name: fullname,
+                email: email
+            };
+
+            alert('Account created successfully!');
+            showPage('login');
+        });
+
+        // Login Handler
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            if (users[username] && users[username].password === password) {
+                currentUser = username;
+                document.getElementById('username-display').textContent = users[username].name;
+                document.getElementById('user-info').style.display = 'flex';
+                showPage('patient-search');
+            } else {
+                alert('Invalid username or password');
+            }
+        });
+
+        // Patient Form Handler
+        document.getElementById('patient-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const patientData = {
+                patient_id: document.getElementById('patient-id').value,
+                name: document.getElementById('patient-name').value,
+                age: document.getElementById('patient-age').value,
+                phone: document.getElementById('patient-phone').value,
+                gender: document.getElementById('patient-gender').value,
+                address: document.getElementById('patient-address').value,
+                medical_history: document.getElementById('medical-history').value,
+                current_medications: document.getElementById('current-medications').value,
+                allergies: document.getElementById('allergies').value,
+                updated_by: currentUser
+            };
+
+            try {
+                const response = await fetch('/api/patients', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(patientData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save patient record');
+                }
+
+                const result = await response.json();
+                alert('Patient record saved successfully!');
+                this.reset();
+                searchPatients(); // Refresh the patient list
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save patient record. Please try again.');
+            }
+        });
+
+        // Search Function
+        async function searchPatients() {
+            const searchTerm = document.getElementById('search-input').value;
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = '';
+
+            try {
+                const response = await fetch(`/api/patients?search=${encodeURIComponent(searchTerm)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch patients');
+                }
+
+                const patients = await response.json();
+                
+                if (patients.length === 0) {
+                    resultsDiv.innerHTML = '<p>No patients found.</p>';
+                    return;
+                }
+
+                patients.forEach(patient => {
+                    const patientCard = createPatientCard(patient);
+                    resultsDiv.appendChild(patientCard);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = '<p>Error fetching patients. Please try again.</p>';
+            }
+        }
+
+        // Create Patient Card
+        function createPatientCard(patient) {
+            const card = document.createElement('div');
+            card.className = 'patient-card';
+            card.innerHTML = `
+                <h3>${patient.name}</h3>
+                <p><strong>ID:</strong> ${patient.patient_id}</p>
+                <p><strong>Age:</strong> ${patient.age}</p>
+                <p><strong>Gender:</strong> ${patient.gender}</p>
+                <p><strong>Phone:</strong> ${patient.phone}</p>
+                <p><strong>Address:</strong> ${patient.address}</p>
+                <p><strong>Medical History:</strong> ${patient.medical_history || 'None'}</p>
+                <p><strong>Current Medications:</strong> ${patient.current_medications || 'None'}</p>
+                <p><strong>Allergies:</strong> ${patient.allergies || 'None'}</p>
+                <p><small>Last updated: ${new Date(patient.updated_at).toLocaleString()} by ${patient.updated_by_name || patient.updated_by}</small></p>
+                <button onclick="editPatient('${patient.patient_id}')">Edit</button>
+                <button onclick="deletePatient('${patient.patient_id}')">Delete</button>
+            `;
+            return card;
+        }
+
+        // Edit Patient
+        function editPatient(patientId) {
+            const patient = patients[patientId];
+            if (!patient) return;
+
+            document.getElementById('patient-id').value = patient.id;
+            document.getElementById('patient-name').value = patient.name;
+            document.getElementById('patient-age').value = patient.age;
+            document.getElementById('patient-phone').value = patient.phone;
+            document.getElementById('patient-gender').value = patient.gender;
+            document.getElementById('patient-address').value = patient.address;
+            document.getElementById('medical-history').value = patient.medicalHistory;
+            document.getElementById('current-medications').value = patient.currentMedications;
+            document.getElementById('allergies').value = patient.allergies;
+
+            showPage('add-patient');
+        }
+
+        // Delete Patient
+        async function deletePatient(patientId) {
+            if (confirm('Are you sure you want to delete this patient record?')) {
+                try {
+                    const response = await fetch(`/api/patients/${patientId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to delete patient');
+                    }
+                    
+                    alert('Patient record deleted successfully!');
+                    updateRecordsDisplay(); // Refresh the records display
+                    searchPatients(); // Refresh the search results if on search page
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to delete patient record. Please try again.');
+                }
+            }
+        }
+
+        // Update Records Display
+        async function updateRecordsDisplay() {
+            const container = document.getElementById('records-container');
+            container.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/patients');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch patients');
+                }
+                
+                const patients = await response.json();
+                if (patients.length === 0) {
+                    container.innerHTML = '<p>No patient records found.</p>';
+                    return;
+                }
+                
+                patients.forEach(patient => {
+                    const patientCard = createPatientCard(patient);
+                    container.appendChild(patientCard);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = '<p>Error fetching patient records. Please try again.</p>';
+            }
+        }
+
+        // Update Profile Info
+        function updateProfileInfo() {
+            if (currentUser && users[currentUser]) {
+                const user = users[currentUser];
+                document.getElementById('profile-info').innerHTML = `
+                    <p><strong>Name:</strong> ${user.name}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
