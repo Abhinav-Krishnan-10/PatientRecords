@@ -41,7 +41,7 @@ app.post('/api/login', async (req, res) => {
     const query = 'SELECT * FROM users WHERE username = ?';
     db.query(query, [username], (err, results) => {
         if (err) {
-            console.error(err);
+            console.error('Database error:', err);
             return res.status(500).json({ error: 'Internal server error' });
         }
         
@@ -76,7 +76,7 @@ app.post('/api/register', async (req, res) => {
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.status(400).json({ error: 'Username or email already exists' });
                 }
-                console.error(err);
+                console.error('Database error:', err);
                 return res.status(500).json({ error: 'Internal server error' });
             }
             res.json({ message: 'User registered successfully' });
@@ -129,6 +129,38 @@ app.get('/api/patients', (req, res) => {
     }
 });
 
+app.get('/api/patients/:id', (req, res) => {
+    const query = `
+        SELECT 
+            p.id as patient_id, 
+            p.name, 
+            p.age, 
+            p.gender, 
+            p.phone, 
+            p.address,
+            p.medicalHistory as medical_history,
+            p.currentMedications as current_medications,
+            p.allergies,
+            p.lastUpdated as updated_at,
+            p.updatedBy as updated_by,
+            u.fullname as updated_by_name
+        FROM patients p
+        LEFT JOIN users u ON p.updatedBy = u.username
+        WHERE p.id = ?
+    `;
+
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Patient not found' });
+        }
+        res.json(results[0]);
+    });
+});
+
 app.post('/api/patients', (req, res) => {
     const { 
         patient_id, 
@@ -143,21 +175,8 @@ app.post('/api/patients', (req, res) => {
         updated_by 
     } = req.body;
 
-    console.log('Received patient data:', req.body); // Log the received data
-
-    // Validate required fields
     if (!patient_id || !name || !age || !gender || !phone || !address) {
-        return res.status(400).json({ 
-            error: 'Missing required fields',
-            details: {
-                patient_id: !patient_id,
-                name: !name,
-                age: !age,
-                gender: !gender,
-                phone: !phone,
-                address: !address
-            }
-        });
+        return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const query = `
@@ -181,19 +200,13 @@ app.post('/api/patients', (req, res) => {
         updated_by || null
     ];
 
-    console.log('Executing query:', query); // Log the query
-    console.log('With values:', values); // Log the values
-
     db.query(query, values, (err, result) => {
         if (err) {
             console.error('Database error:', err);
             if (err.code === 'ER_DUP_ENTRY') {
                 return res.status(400).json({ error: 'Patient ID already exists' });
             }
-            return res.status(500).json({ 
-                error: 'Internal server error',
-                details: err.message
-            });
+            return res.status(500).json({ error: 'Internal server error' });
         }
         res.json({ message: 'Patient added successfully' });
     });
@@ -216,7 +229,7 @@ app.put('/api/patients/:id', (req, res) => {
         updated_by, req.params.id
     ], (err, result) => {
         if (err) {
-            console.error(err);
+            console.error('Database error:', err);
             return res.status(500).json({ error: 'Internal server error' });
         }
         if (result.affectedRows === 0) {
@@ -240,24 +253,20 @@ app.delete('/api/patients/:id', (req, res) => {
     });
 });
 
-// Medical Records Routes
-app.post('/api/records', (req, res) => {
-    const { patient_id, diagnosis, treatment, prescriptions, notes, created_by } = req.body;
+// Get user profile
+app.get('/api/users/profile', (req, res) => {
+    const username = req.headers['x-user'] || 'admin';
     
-    const query = 'INSERT INTO medical_records SET ?';
-    db.query(query, {
-        patient_id,
-        diagnosis,
-        treatment,
-        prescriptions,
-        notes,
-        created_by
-    }, (err, result) => {
+    const query = 'SELECT id, username, fullname as full_name, email FROM users WHERE username = ?';
+    db.query(query, [username], (err, results) => {
         if (err) {
-            console.error(err);
+            console.error('Database error:', err);
             return res.status(500).json({ error: 'Internal server error' });
         }
-        res.json({ message: 'Medical record added successfully' });
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(results[0]);
     });
 });
 

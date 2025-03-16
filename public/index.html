@@ -319,22 +319,11 @@
         const sidebar = document.getElementById('sidebar');
         const menuBtn = document.getElementById('menu-btn');
         let currentPageId;
-        showPage('login')
-            
-            
         let currentUser = null;
-        let patients = {};
-        const users = {
-            'admin': {
-                password: 'admin123',
-                name: 'Administrator',
-                email: 'admin@hospital.com'
-            }
-        };
+        showPage('login');
 
         // Utility Functions
         function toggleSidebar() {
-            
             sidebar.classList.toggle('open');
             if (sidebar.classList.contains('open')) {
                 menuBtn.style.display = 'none';
@@ -345,30 +334,25 @@
 
         // Hide sidebar when clicking outside
         window.addEventListener('click', function(event) {
-
             if (!sidebar.contains(event.target) && !menuBtn.contains(event.target)) {
-               
-
-              if (currentPageId !== 'login' && currentPageId !== 'signup') {
-                 sidebar.classList.remove('open');
-                	menuBtn.style.display = 'block';
-              }
-            
-            
+                if (currentPageId !== 'login' && currentPageId !== 'signup') {
+                    sidebar.classList.remove('open');
+                    menuBtn.style.display = 'block';
+                }
             }
         });
 
         function showPage(pageId) {
-        		currentPageId = pageId;
+            currentPageId = pageId;
 
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
             document.getElementById(pageId).classList.add('active');
             if (pageId !== 'login' && pageId !== 'signup') {
-								menuBtn.style.display = 'none';
-								toggleSidebar();
-            }else{
+                menuBtn.style.display = 'none';
+                toggleSidebar();
+            } else {
                 menuBtn.style.display = 'none';
             }
             if (pageId === 'user-profile') {
@@ -384,42 +368,62 @@
             showPage('login');
         }
 
-        // Sign Up Handler
-        document.getElementById('signup-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('signup-username').value;
-            const password = document.getElementById('signup-password').value;
-            const fullname = document.getElementById('signup-fullname').value;
-            const email = document.getElementById('signup-email').value;
-
-            if (users[username]) {
-                alert('Username already exists!');
-                return;
-            }
-
-            users[username] = {
-                password: password,
-                name: fullname,
-                email: email
-            };
-
-            alert('Account created successfully!');
-            showPage('login');
-        });
-
         // Login Handler
-        document.getElementById('login-form').addEventListener('submit', function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
 
-            if (users[username] && users[username].password === password) {
-                currentUser = username;
-                document.getElementById('username-display').textContent = users[username].name;
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Invalid credentials');
+                }
+
+                const user = await response.json();
+                currentUser = user.username;
+                document.getElementById('username-display').textContent = user.full_name;
                 document.getElementById('user-info').style.display = 'flex';
                 showPage('patient-search');
-            } else {
+            } catch (error) {
+                console.error('Error:', error);
                 alert('Invalid username or password');
+            }
+        });
+
+        // Sign Up Handler
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('signup-username').value;
+            const password = document.getElementById('signup-password').value;
+            const full_name = document.getElementById('signup-fullname').value;
+            const email = document.getElementById('signup-email').value;
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password, full_name, email })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create account');
+                }
+
+                alert('Account created successfully!');
+                showPage('login');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to create account. Please try again.');
             }
         });
 
@@ -513,21 +517,29 @@
         }
 
         // Edit Patient
-        function editPatient(patientId) {
-            const patient = patients[patientId];
-            if (!patient) return;
+        async function editPatient(patientId) {
+            try {
+                const response = await fetch(`/api/patients/${patientId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch patient details');
+                }
 
-            document.getElementById('patient-id').value = patient.id;
-            document.getElementById('patient-name').value = patient.name;
-            document.getElementById('patient-age').value = patient.age;
-            document.getElementById('patient-phone').value = patient.phone;
-            document.getElementById('patient-gender').value = patient.gender;
-            document.getElementById('patient-address').value = patient.address;
-            document.getElementById('medical-history').value = patient.medicalHistory;
-            document.getElementById('current-medications').value = patient.currentMedications;
-            document.getElementById('allergies').value = patient.allergies;
+                const patient = await response.json();
+                document.getElementById('patient-id').value = patient.patient_id;
+                document.getElementById('patient-name').value = patient.name;
+                document.getElementById('patient-age').value = patient.age;
+                document.getElementById('patient-phone').value = patient.phone;
+                document.getElementById('patient-gender').value = patient.gender;
+                document.getElementById('patient-address').value = patient.address;
+                document.getElementById('medical-history').value = patient.medical_history || '';
+                document.getElementById('current-medications').value = patient.current_medications || '';
+                document.getElementById('allergies').value = patient.allergies || '';
 
-            showPage('add-patient');
+                showPage('add-patient');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to load patient details. Please try again.');
+            }
         }
 
         // Delete Patient
@@ -580,13 +592,23 @@
         }
 
         // Update Profile Info
-        function updateProfileInfo() {
-            if (currentUser && users[currentUser]) {
-                const user = users[currentUser];
+        async function updateProfileInfo() {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch('/api/users/profile');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch profile');
+                }
+
+                const user = await response.json();
                 document.getElementById('profile-info').innerHTML = `
-                    <p><strong>Name:</strong> ${user.name}</p>
+                    <p><strong>Name:</strong> ${user.full_name}</p>
                     <p><strong>Email:</strong> ${user.email}</p>
                 `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('profile-info').innerHTML = '<p>Error loading profile. Please try again.</p>';
             }
         }
     </script>
